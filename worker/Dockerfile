@@ -3,4 +3,4 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY src/ src/
 RUN pip install -e ".[test]"
-CMD ["uvicorn", "ingest_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "worker.main"]
