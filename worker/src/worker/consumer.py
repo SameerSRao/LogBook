@@ -1,4 +1,5 @@
 import asyncpg
+import json
 from redis.asyncio import Redis
 
 from .db import insert_log_row
@@ -8,6 +9,7 @@ GROUP_NAME = "logbook-workers"
 CONSUMER_NAME = "worker-1"
 BATCH_SIZE = 100
 BLOCK_MS = 2000
+PUBSUB_CHANNEL = "logbook:new-log"
 
 
 async def ensure_consumer_group(redis: Redis) -> None:
@@ -35,3 +37,10 @@ async def run_consumer(redis: Redis, pool: asyncpg.Pool) -> None:
             for msg_id, fields in entries:
                 await insert_log_row(conn, fields)
                 await redis.xack(STREAM_NAME, GROUP_NAME, msg_id)
+                await redis.publish(PUBSUB_CHANNEL, json.dumps({
+                    "timestamp": fields["timestamp"],
+                    "service": fields["service"],
+                    "level": fields["level"],
+                    "message": fields["message"],
+                    "context": json.loads(fields["context"]) if fields.get("context") else None,
+                }))
